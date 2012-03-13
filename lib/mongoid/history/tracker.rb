@@ -107,8 +107,26 @@ private
       begin
         node = chain.shift
         name = node['name']
-        col  = doc.nil? ? name.classify.constantize : doc.send(name.tableize)
-        doc  = col.where(:_id => node['id']).first
+        
+        # this breakes on embeds_one relationships
+        #col  = doc.nil? ? name.classify.constantize : doc.send(name.tableize)
+        #doc  = col.where(:_id => node['id']).first
+        
+        # this doesn't break but if feels hackish (is there a better way to recognize if the relationship is 1..1 or 1..N?)
+        if doc.nil?
+          col  = name.classify.constantize
+          doc  = col.where(:_id => node['id']).first
+        else
+          if doc.respond_to?(name.tableize)
+            # this works for embeds_many
+            col  = doc.send(name.tableize)
+            doc  = col.where(:_id => node['id']).first
+          else
+            # this works for embeds_one
+            doc  = doc.send(name.tableize.singularize)
+          end
+        end
+        
         documents << doc
       end while( !chain.empty? )
       documents
